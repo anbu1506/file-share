@@ -1,0 +1,12 @@
+[package]
+name = "share"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+home = "0.5.9"
+libmdns = "0.6"
+mdns-sd = "0.10.3"
+tokio = { version = "1.35.1", features = ["full"] }
