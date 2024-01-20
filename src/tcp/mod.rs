@@ -40,13 +40,15 @@ impl<'a> Sender<'a>{
        Ok(stream)
     }
 
-    async fn handle_transfer(file_path:&str,stream:&mut tokio::net::TcpStream)->Result<(), Box<dyn std::error::Error>>{
+    async fn handle_transfer(file_path:&str,stream:&mut tokio::net::TcpStream,sender_name:&str)->Result<(), Box<dyn std::error::Error>>{
         let file_name = std::path::Path::new(file_path).file_name().unwrap().to_str().unwrap();
         let file_name = padding(file_name.to_string());
         //chech the file exists or not
         let  file = tokio::fs::File::open(file_path).await?;
         //then sending file_name
         stream.write_all(file_name.as_bytes()).await?;
+        //sending sender_name
+        stream.write_all(padding(sender_name.to_string()).as_bytes()).await?;
         //then sending data
         let mut file_reader = tokio::io::BufReader::new(file);
         let bytes_transferred = copy(&mut file_reader,  stream).await?;
@@ -60,13 +62,14 @@ impl<'a> Sender<'a>{
         while self.files.len()!=0{
             let mut stream = self.connect_nth_stream(i as i32).await?;
             let file_path = self.files.pop().unwrap().to_string();
+            let sender_name = self.name.to_string();
             let handle =tokio::spawn(async move{
-                Self::handle_transfer(file_path.as_str(),&mut stream).await.unwrap();
+                Self::handle_transfer(file_path.as_str(),&mut stream,sender_name.as_str()).await.unwrap();
             });
             handles.push(handle);
             i+=1;
         }
-        println!("i:{} flen:{}",i,self.files.len());
+
         for handle in handles{
             handle.await?;
         }
@@ -131,10 +134,15 @@ impl<'a> Receiver<'a>{
         let mut file_name = [0u8; 255];
         stream.read_exact(&mut file_name).await?;
         let file_name = remove_padding(String::from_utf8(file_name.to_vec())?);
+
+        let mut sender_name = [0u8;255];
+        stream.read_exact(&mut sender_name).await?;
+        let sender_name = remove_padding(String::from_utf8(sender_name.to_vec())?);
+
         let download_path = home::home_dir().unwrap().join("Downloads").join(file_name.as_str());
         let mut dest_file = create_or_incnum(download_path).await?;
         let bytes_transferred = copy( stream, &mut dest_file).await?;
-        println!("Received and saved {} bytes.", bytes_transferred);
+        println!("Received {} bytes from {} .", bytes_transferred,sender_name);
         Ok(file_name)
     }
 }
