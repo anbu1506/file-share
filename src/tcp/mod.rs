@@ -1,21 +1,8 @@
 use tokio::{io::{ copy, AsyncWriteExt, AsyncReadExt}, net::{TcpListener, TcpStream}};
 
-fn padding(name:String)->String{
-    let mut name=name;
-    while name.len()<=255{
-        name.push(' ');
-    }
-    name
+use crate::utils::{padding, remove_padding, create_or_incnum, };
 
-}
 
-fn remove_padding(name:String)->String{
-    let mut name=name;
-    while name.len()>0 && name.chars().last().unwrap()==' '{
-        name.pop();
-    }
-    name
-}
 
 pub struct Sender<'a>{
     name:&'a str,
@@ -85,6 +72,7 @@ impl<'a> Sender<'a>{
         }
         Ok(())
     }
+
 }
 
 
@@ -144,7 +132,7 @@ impl<'a> Receiver<'a>{
         stream.read_exact(&mut file_name).await?;
         let file_name = remove_padding(String::from_utf8(file_name.to_vec())?);
         let download_path = home::home_dir().unwrap().join("Downloads").join(file_name.as_str());
-        let mut dest_file = tokio::fs::File::create(download_path).await?;
+        let mut dest_file = create_or_incnum(download_path).await?;
         let bytes_transferred = copy( stream, &mut dest_file).await?;
         println!("Received and saved {} bytes.", bytes_transferred);
         Ok(file_name)
