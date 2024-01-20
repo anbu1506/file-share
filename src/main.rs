@@ -7,10 +7,10 @@ mod mdns;
 
 #[tokio::main]
 async fn main() {
-    let mut sender = tcp::Sender::new("Jarvis".to_string());
-    sender.add_file("Cargo.toml".to_string());
-    sender.add_file("Cargo.toml".to_string());
-    sender.add_file("Cargo.lock".to_string());
-    sender.set_receiver_addr("127.0.0.1:8080".to_string());
+    let mut sender = tcp::Sender::new("Jarvis");
+    sender.add_file("Cargo.toml");
+    sender.add_file("Cargo.toml");
+    sender.add_file("Cargo.lock");
+    sender.set_receiver_addr("127.0.0.1","5432");
     sender.send().await.unwrap();
 }                                                 
