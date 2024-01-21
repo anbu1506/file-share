@@ -28,9 +28,7 @@ impl<'a> Sender<'a>{
     }
 
     pub async fn search_receiver(){
-        tokio::spawn(async move{
             mdns_scanner().await;
-        });
     }
 
     pub fn set_receiver_addr(&mut self,receiver_ip:&'a str,receiver_port:&'a str){
@@ -111,19 +109,21 @@ impl<'a> Receiver<'a>{
         }
     }
 
-    pub async fn notify_all(&self){
+     async fn notify_all(&self){
+        println!("notifying...");
         let port =self.my_port.to_owned();
         let name = self.name.to_owned();
-        let handle = tokio::spawn(async move{
-            mdns_offer(port.as_str(),name.as_str());
-        });
-        handle.await.unwrap();
+        mdns_offer(port.as_str(),name.as_str());
+        
     }
 
-    pub async fn listen_on(&mut self,port:&'a str)->Result<(),Box<dyn std::error::Error>>{
+    pub async fn listen_on(&mut self,port:&'a str,notify:bool)->Result<(),Box<dyn std::error::Error>>{
         self.my_port=port;
         let listener = TcpListener::bind(self.my_ip.to_owned()+":"+self.my_port).await?;
         println!("Listening on port {}",port);
+        if notify {
+            self.notify_all().await;
+        }
         let mut handles = vec![];
         let mut i=0;
         while i<5{

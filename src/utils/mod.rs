@@ -7,7 +7,7 @@ pub async fn create_or_incnum(file_path:PathBuf)->Result<File,Error>{
     let mut n =1;
     while let Err(ref err) = x{
         if err.kind() == tokio::io::ErrorKind::AlreadyExists{
-            let ext = file_path.extension().unwrap();
+            let ext = file_path.extension().unwrap_or("".as_ref());
             let mut file_name = file_path.file_stem().unwrap().to_os_string();
             file_name.push(n.to_string()+".");
             file_name.push(ext);
