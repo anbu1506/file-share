@@ -1,6 +1,6 @@
 use tokio::{io::{ copy, AsyncWriteExt, AsyncReadExt}, net::{TcpListener, TcpStream}};
 
-use crate::utils::{padding, remove_padding, create_or_incnum, };
+use crate::{utils::{padding, remove_padding, create_or_incnum, }, mdns::{mdns_offer, mdns_scanner}};
 
 
 
@@ -25,6 +25,12 @@ impl<'a> Sender<'a>{
 
     pub fn add_file(&mut self,file_name:&'a str){
         self.files.push(file_name);
+    }
+
+    pub async fn search_receiver(){
+        tokio::spawn(async move{
+            mdns_scanner().await;
+        });
     }
 
     pub fn set_receiver_addr(&mut self,receiver_ip:&'a str,receiver_port:&'a str){
@@ -98,11 +104,20 @@ impl<'a> Receiver<'a>{
     pub fn new(name:&'a str)->Receiver<'a>{
         Receiver{
             name,
-            my_ip:"127.0.0.1",
+            my_ip:"0.0.0.0",
             my_port:"8080",
             sender_streams_addr:vec![],
             files:vec![],
         }
+    }
+
+    pub async fn notify_all(&self){
+        let port =self.my_port.to_owned();
+        let name = self.name.to_owned();
+        let handle = tokio::spawn(async move{
+            mdns_offer(port.as_str(),name.as_str());
+        });
+        handle.await.unwrap();
     }
 
     pub async fn listen_on(&mut self,port:&'a str)->Result<(),Box<dyn std::error::Error>>{
@@ -130,7 +145,7 @@ impl<'a> Receiver<'a>{
     }
 
     async fn receive(stream:& mut TcpStream)->Result<String, Box<dyn std::error::Error>>{
-        println!("receiving file");
+        
         let mut file_name = [0u8; 255];
         stream.read_exact(&mut file_name).await?;
         let file_name = remove_padding(String::from_utf8(file_name.to_vec())?);
@@ -138,6 +153,8 @@ impl<'a> Receiver<'a>{
         let mut sender_name = [0u8;255];
         stream.read_exact(&mut sender_name).await?;
         let sender_name = remove_padding(String::from_utf8(sender_name.to_vec())?);
+
+        println!("receiving {} from {}",file_name,sender_name);
 
         let download_path = home::home_dir().unwrap().join("Downloads").join(file_name.as_str());
         let mut dest_file = create_or_incnum(download_path).await?;

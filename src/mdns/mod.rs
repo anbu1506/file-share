@@ -1,13 +1,14 @@
-pub fn mdns_offer(){
+pub fn mdns_offer(port:&str,name:&str){
     let responder = libmdns::Responder::new().unwrap();
-    let _svc = responder.register("_fileshare._tcp".into(),"Jarvis".into(),5432,&["hello"]);
+    let _svc = responder.register("_fileshare._tcp".into(),name.into(),port.parse::<u16>().unwrap(),&[(name.to_owned()+": i'm Alive").as_str()]);
     loop{
         std::thread::sleep(std::time::Duration::from_secs(5));
-        println!("light_house is alive ...");
+
+        println!("{}", format!("{} is still alive",name));
     }
 }
 
-pub async fn search_receiver(){
+pub async fn mdns_scanner(){
     use mdns_sd::{ServiceDaemon, ServiceEvent};
 
 let mdns = ServiceDaemon::new().expect("Failed to create daemon");
