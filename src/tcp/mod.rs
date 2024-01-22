@@ -1,32 +1,35 @@
+use std::process;
+
+use dialoguer::{theme::ColorfulTheme, Select};
 use tokio::{io::{ copy, AsyncWriteExt, AsyncReadExt}, net::{TcpListener, TcpStream}};
 
 use crate::{utils::{padding, remove_padding, create_or_incnum, }, mdns::{mdns_offer, mdns_scanner}};
 
 use rfd::AsyncFileDialog;
 
-
-pub struct Sender<'a>{
+#[derive(Debug)]
+pub struct Sender{
     name:String,
     my_streams_addr:Vec<String>,
-    receiver_ip:&'a str,
-    receiver_port:&'a str,
+    receiver_ip:String,
+    receiver_port:String,
     files:Vec<String>
 }
 
-impl<'a> Sender<'a>{
-    pub fn new()->Sender<'a>{
+impl Sender{
+    pub fn new()->Sender{
         let  name = hostname::get().unwrap();
         let name = name.to_str().unwrap().to_string();
         Sender{
             name,
             my_streams_addr:vec![],
             files:vec![],
-            receiver_ip:"",
-            receiver_port:""
+            receiver_ip:"".to_owned(),
+            receiver_port:"".to_owned()
         }
     }
 
-    pub fn add_file(&mut self,file_name:&'a str){
+    pub fn add_file(&mut self,file_name:& str){
         self.files.push(file_name.to_owned());
     }
 
@@ -46,11 +49,35 @@ impl<'a> Sender<'a>{
         future.await;
     }
 
-    pub async fn search_receiver(){
-            mdns_scanner().await;
+    pub async fn search_and_set_receiver(&mut self){
+       
+        let rec = mdns_scanner().await;
+        let mut ips = vec!["none".to_owned()];
+        let mut ports = vec!["none".to_owned()];
+        let mut names = vec!["exit".to_owned()];
+        rec.iter().for_each(|(ip,port,name)|{
+            // println!("{} {} {}",ip,port,name);
+            ips.push(ip.to_owned());
+            ports.push(port.to_owned());
+            names.push(name.to_owned());
+        });
+
+        let selection = Select::with_theme(&ColorfulTheme::default())
+                .with_prompt("Select a receiver")
+                .items(&names)
+                .default(0) // Default selection index (optional)
+                .interact()
+                .unwrap();
+        if selection == 0{
+            println!("exited ...");
+            process::exit(1);
+        }
+        let ip = ips[selection].to_owned();
+        let port = ports[selection].to_owned();
+        self.set_receiver_addr(ip, port);
     }
 
-    pub fn set_receiver_addr(&mut self,receiver_ip:&'a str,receiver_port:&'a str){
+    pub fn set_receiver_addr(&mut self,receiver_ip:String,receiver_port:String){
         self.receiver_ip=receiver_ip;
         self.receiver_port=receiver_port;
     }
@@ -134,10 +161,9 @@ impl<'a> Receiver<'a>{
         println!("notifying...");
         let port =self.my_port.to_owned();
         let name = self.name.to_owned();
-        mdns_offer(port.as_str(),name.as_str());
-        
+        mdns_offer(port.as_str(),name.as_str());   
     }
-/// Hellp
+    
     pub async fn listen_on(&mut self,port:&'a str,notify:bool)->Result<(),Box<dyn std::error::Error>>{
         self.my_port=port;
         let listener = TcpListener::bind(self.my_ip.to_owned()+":"+self.my_port).await?;
