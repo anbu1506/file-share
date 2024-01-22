@@ -6,7 +6,7 @@ use rfd::AsyncFileDialog;
 
 
 pub struct Sender<'a>{
-    name:&'a str,
+    name:String,
     my_streams_addr:Vec<String>,
     receiver_ip:&'a str,
     receiver_port:&'a str,
@@ -14,7 +14,9 @@ pub struct Sender<'a>{
 }
 
 impl<'a> Sender<'a>{
-    pub fn new(name:&'a str)->Sender<'a>{
+    pub fn new()->Sender<'a>{
+        let  name = hostname::get().unwrap();
+        let name = name.to_str().unwrap().to_string();
         Sender{
             name,
             my_streams_addr:vec![],
@@ -106,7 +108,7 @@ impl<'a> Sender<'a>{
 
 
 pub struct Receiver<'a>{
-    name:&'a str,
+    name:String,
     my_ip:&'a str,
     my_port:&'a str,
     sender_streams_addr:Vec<String>,
@@ -116,7 +118,9 @@ pub struct Receiver<'a>{
 
 impl<'a> Receiver<'a>{
 
-    pub fn new(name:&'a str)->Receiver<'a>{
+    pub fn new()->Receiver<'a>{
+        let  name = hostname::get().unwrap();
+        let name = name.to_str().unwrap().to_string();
         Receiver{
             name,
             my_ip:"0.0.0.0",
@@ -133,7 +137,7 @@ impl<'a> Receiver<'a>{
         mdns_offer(port.as_str(),name.as_str());
         
     }
-
+/// Hellp
     pub async fn listen_on(&mut self,port:&'a str,notify:bool)->Result<(),Box<dyn std::error::Error>>{
         self.my_port=port;
         let listener = TcpListener::bind(self.my_ip.to_owned()+":"+self.my_port).await?;

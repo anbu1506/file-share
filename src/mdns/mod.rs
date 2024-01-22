@@ -2,7 +2,7 @@ use mdns_sd::{ServiceDaemon, ServiceEvent};
 
 pub fn mdns_offer(port:&str,name:&str){
     let responder = libmdns::Responder::new().unwrap();
-    let _svc = responder.register("_fileshare._tcp".into(),name.into(),port.parse::<u16>().unwrap(),&[(name.to_owned()+": i'm Alive").as_str()]);
+    let _svc = responder.register("_fileshare._tcp.local".into(),name.into(),port.parse::<u16>().unwrap(),&[(name.to_owned()+": i'm Alive").as_str()]);
 }
 
 pub async fn mdns_scanner(){
