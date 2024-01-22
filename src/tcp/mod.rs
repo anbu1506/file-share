@@ -54,7 +54,7 @@ impl Sender{
         let rec = mdns_scanner().await;
         let mut ips = vec!["none".to_owned()];
         let mut ports = vec!["none".to_owned()];
-        let mut names = vec!["exit".to_owned()];
+        let mut names = vec!["none online. exit".to_owned()];
         rec.iter().for_each(|(ip,port,name)|{
             // println!("{} {} {}",ip,port,name);
             ips.push(ip.to_owned());
@@ -157,20 +157,18 @@ impl<'a> Receiver<'a>{
         }
     }
 
-     async fn notify_all(&self){
-        println!("notifying...");
-        let port =self.my_port.to_owned();
-        let name = self.name.to_owned();
-        mdns_offer(port.as_str(),name.as_str());   
-    }
+    // fn notify_all(&self){
+    //     println!("notifying...");
+    //     let port =self.my_port.to_owned();
+    //     let name = self.name.to_owned();
+    //     mdns_offer(port.as_str(),name.as_str());   
+    // }
     
-    pub async fn listen_on(&mut self,port:&'a str,notify:bool)->Result<(),Box<dyn std::error::Error>>{
+    pub async fn listen_on(&mut self,port:&'a str)->Result<(),Box<dyn std::error::Error>>{
         self.my_port=port;
         let listener = TcpListener::bind(self.my_ip.to_owned()+":"+self.my_port).await?;
         println!("Listening on port {}",port);
-        if notify {
-            self.notify_all().await;
-        }
+       
         let mut handles = vec![];
         let mut i=0;
         while i<5{
