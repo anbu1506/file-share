@@ -10,4 +10,5 @@ home = "0.5.9"
 libmdns = "0.6"
 mdns-sd = "0.10.3"
 tokio = { version = "1.35.1", features = ["full"] }
-
+rfd = "0.13.0"
+clap = "4.4.18"

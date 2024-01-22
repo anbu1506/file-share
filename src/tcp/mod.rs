@@ -2,6 +2,7 @@ use tokio::{io::{ copy, AsyncWriteExt, AsyncReadExt}, net::{TcpListener, TcpStre
 
 use crate::{utils::{padding, remove_padding, create_or_incnum, }, mdns::{mdns_offer, mdns_scanner}};
 
+use rfd::AsyncFileDialog;
 
 
 pub struct Sender<'a>{
@@ -9,7 +10,7 @@ pub struct Sender<'a>{
     my_streams_addr:Vec<String>,
     receiver_ip:&'a str,
     receiver_port:&'a str,
-    files:Vec<&'a str>
+    files:Vec<String>
 }
 
 impl<'a> Sender<'a>{
@@ -24,7 +25,23 @@ impl<'a> Sender<'a>{
     }
 
     pub fn add_file(&mut self,file_name:&'a str){
-        self.files.push(file_name);
+        self.files.push(file_name.to_owned());
+    }
+
+    pub async fn  select_files(&mut self) {
+        let future = async {
+            let file = AsyncFileDialog::new()
+                .set_directory("/").pick_files()
+                .await;
+        
+            let files = file.unwrap();
+
+            for file in files {
+                let path = file.path().to_str().unwrap().to_owned();
+                self.files.push(path);
+            }
+        };
+        future.await;
     }
 
     pub async fn search_receiver(){
