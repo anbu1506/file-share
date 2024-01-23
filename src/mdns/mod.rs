@@ -39,12 +39,16 @@ pub async fn mdns_scanner()->Vec<(String, String,String)>{
                  }=>{
                     if let ServiceEvent::ServiceResolved(info) = event.unwrap(){
                                 println!("Resolved a new service: {:?} {} {} {:?}", info.get_addresses(),info.get_port(),info.get_hostname(),info.get_other_ttl());
-                                let ip = info.get_addresses().iter().nth(0).unwrap().to_string();
+                                for ip in info.get_addresses().iter(){
+                                if ip.is_ipv6(){
+                                    continue;
+                                }
                                 let port = info.get_port().to_string();
                                 let host_name = info.get_hostname().to_string();
-                                tx.send((ip,port,host_name)).await.unwrap();
+                                tx.send((ip.to_string(),port,host_name)).await.unwrap();
                                 *value+=1;
                             }
+                        }
                 }
                 f = rx1.recv() => {
                     if f.unwrap() {
