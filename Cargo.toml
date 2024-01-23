@@ -14,3 +14,4 @@ rfd = "0.13.0"
 #clap = {version = "4.4.18" , features = ["cargo"]}
 hostname = "0.3.1"
 dialoguer = "0.11.0"
+indicatif = {version = "0.17.7" , features = ["tokio"] }

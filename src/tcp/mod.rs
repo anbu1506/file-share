@@ -1,9 +1,10 @@
-use std::{path::PathBuf, process};
+use std::{fmt::Write, process};
 
 use dialoguer::{theme::ColorfulTheme, Select};
+use indicatif::{ProgressState, ProgressStyle};
 use tokio::{io::{ copy, AsyncWriteExt, AsyncReadExt}, net::{TcpListener, TcpStream}};
 
-use crate::{utils::{padding, remove_padding, create_or_incnum, }, mdns::{mdns_offer, mdns_scanner}};
+use crate::{utils::{padding, remove_padding, create_or_incnum, }, mdns::mdns_scanner};
 
 use rfd::AsyncFileDialog;
 
@@ -99,9 +100,23 @@ impl Sender{
         stream.write_all(file_name.as_bytes()).await?;
         //sending sender_name
         stream.write_all(padding(sender_name.to_string()).as_bytes()).await?;
+
+        //sending file length
+        // stream.write_all(padding(file.metadata().await?.len().to_string()).as_bytes()).await?;
+        let file_len = file.metadata().await?.len();
+        // stream.write_all(file_len.to_le_bytes().as_ref()).await?;
+        stream.write_u64(file_len).await.unwrap();
+
+        let progress_bar = indicatif::ProgressBar::new(file_len);
+        progress_bar.set_style(ProgressStyle::with_template("{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+        .unwrap()
+        .with_key("eta", |state: &ProgressState, w: &mut dyn Write| write!(w, "{:.1}s", state.eta().as_secs_f64()).unwrap())
+        .progress_chars("#>-"));
+
+
         //then sending data
         let mut file_reader = tokio::io::BufReader::new(file);
-        let bytes_transferred = copy(&mut file_reader,  stream).await?;
+        let bytes_transferred = copy(&mut file_reader,  &mut progress_bar.wrap_async_write(stream)).await?;
         println!("Transferred {} bytes.", bytes_transferred);
         Ok(())
     }
@@ -188,8 +203,7 @@ impl<'a> Receiver<'a>{
         }
         Ok(())
     }
-
-    async fn receive(stream:& mut TcpStream)->Result<String, Box<dyn std::error::Error>>{
+     async fn receive(stream:& mut TcpStream)->Result<String, Box<dyn std::error::Error>>{
         
         let mut file_name = [0u8; 255];
         stream.read_exact(&mut file_name).await?;
@@ -199,46 +213,56 @@ impl<'a> Receiver<'a>{
         stream.read_exact(&mut sender_name).await?;
         let sender_name = remove_padding(String::from_utf8(sender_name.to_vec())?);
 
+        let file_len = stream.read_u64().await.unwrap();
+
         println!("receiving {} from {}",file_name,sender_name);
+
+        let progress_bar = indicatif::ProgressBar::new(file_len);
+        progress_bar.set_style(
+            indicatif::ProgressStyle::default_bar()
+                .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+                .unwrap()
+        );
 
         let download_path = home::home_dir().unwrap().join("Downloads").join(file_name.as_str());
         let mut dest_file = create_or_incnum(download_path).await?;
-        let bytes_transferred = copy( stream, &mut dest_file).await?;
+        
+        let bytes_transferred = copy( stream, &mut progress_bar.wrap_async_write(dest_file)).await?;
         println!("Received {} bytes from {} .", bytes_transferred,sender_name);
         Ok(file_name)
     }
+
+        
+    //     let mut file_name = [0u8; 255];
+    //     stream.read_exact(&mut file_name).await?;
+    //     let file_name = remove_padding(String::from_utf8(file_name.to_vec())?);
+
+    //     let mut sender_name = [0u8;255];
+    //     stream.read_exact(&mut sender_name).await?;
+    //     let sender_name = remove_padding(String::from_utf8(sender_name.to_vec())?);
+
+    //     let file_len = stream.read_u64().await.unwrap();
+
+    //     println!("receiving {} from {}",file_name,sender_name);
+
+    //     let progress_bar = indicatif::ProgressBar::new(file_len);
+    //     progress_bar.set_style(
+    //         indicatif::ProgressStyle::default_bar()
+    //             .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")
+    //             .unwrap()
+    //     );
+
+    //     let download_path = home::home_dir().unwrap().join("Downloads").join(file_name.as_str());
+    //     let mut dest_file = create_or_incnum(download_path).await?;
+        
+    //     let mut buffer = [0u8; 8192];
+    //     while let Ok(bytes_read) = stream.read(&mut buffer).await {
+    //         if bytes_read == 0 {
+    //             break;
+    //         }
+    //         dest_file.write_all(&buffer[..bytes_read]).await?;
+    //         progress_bar.inc(bytes_read as u64);
+    //     }
+    //     Ok(file_name)
+    // }
 }
-
-
-
-
-
-// pub async fn connect_to_receiver(recv_addr:&str)->Result<TcpStream, Box<dyn std::error::Error>>{
-//     println!("connecting to receiver...");
-//     let  stream = tokio::net::TcpStream::connect(recv_addr).await?;
-//     println!("connected to receiver");
-//    Ok(stream)
-// }
-
-
-
-// pub async fn start_receiver()->Result<(), Box<dyn std::error::Error>>{
-//     let listener = TcpListener::bind("127.0.0.1:8080").await?;
-//     println!("Listening on port 8080");
-//     let mut handles = vec![];
-//     let mut i=0;
-//     while i<5{
-//         let (mut stream, _) = listener.accept().await?;
-//         println!("connection accepted from sender {}",stream.peer_addr()?);
-//         let handle =tokio::spawn(async move{
-//             receive(&mut stream).await.unwrap();
-//         });
-//         handles.push(handle);
-//         i+=1;
-//     }
-//     println!("waiting for all handles to join");
-//     for handle in handles{
-//         handle.await?;
-//     }
-//     Ok(())
-// }
