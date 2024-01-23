@@ -1,16 +1,17 @@
-use std::{sync::Arc, time::Duration};
+use std::{process, sync::Arc, time::Duration};
 
 use mdns_sd::{ServiceDaemon, ServiceEvent};
 use tokio::sync::{mpsc, Mutex};
 
-pub fn mdns_offer(port:&str,name:&str){
-    println!("im alive");
-    // let responder = libmdns::Responder::new().expect("connect to a network!");
-    // let _svc = responder.register("_fileshare._tcp".into(),"_fileshare._tcp.local".to_owned(),port.parse::<u16>().unwrap(),&[(name.to_owned()+": i'm Alive").as_str()]);
-
-    let responder = libmdns::Responder::new().unwrap();
-    let _svc = responder.register("_fileshare._tcp".into(),"_fileshare._tcp.local".into(),5432,&["hello anbu"]);
+pub fn mdns_offer(port:&str){
     
+     let responder = libmdns::Responder::new().unwrap_or_else(|err|{
+            println!("connect to a network");
+            process::exit(0);
+        });
+        let _svc = responder.register("_fileshare._tcp".into(),"_fileshare._tcp.local".into(),port.parse::<u16>().unwrap(),&["hello anbu"]);
+        
+
 }
 
 pub async fn mdns_scanner()->Vec<(String, String,String)>{

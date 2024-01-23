@@ -2,11 +2,9 @@ use std::{env, process};
 
 
 
-
 mod tcp;
 mod mdns;
 mod utils;
-mod app;
 
 #[tokio::main]
 async fn main() {
@@ -58,27 +56,12 @@ async fn main() {
         });
         let _svc = responder.register("_fileshare._tcp".into(),"_fileshare._tcp.local".into(),port.parse::<u16>().unwrap(),&["hello anbu"]);
         
-
-
-       
-            let mut rec= tcp::Receiver::new();
-            
-            rec.listen_on(port).await.unwrap();
+        // mdns_offer(port);
+        let mut rec= tcp::Receiver::new();
+        rec.listen_on(port).await.unwrap();
     }
    
      
 
     
 }
-
-// use std::process;
-
-// fn main(){
-//     let responder = libmdns::Responder::new().unwrap_or_else(|err|{
-//         println!("connect to a network");
-//         process::exit(0);
-//     });
-//     let _svc = responder.register("_fileshare._tcp".into(),"_fileshare._tcp.local".into(),5432,&["hello anbu"]);
-    
-
-// }
